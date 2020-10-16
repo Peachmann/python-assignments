@@ -1,12 +1,14 @@
 """Assignment 1: Cryptography for CS41 Winter 2020.
 
-Name: <YOUR NAME>
-SUNet: <SUNet ID>
+Name: Sólyom László
+SCS ID: slim1870
 
-Replace this placeholder text with a description of this module.
+Crpyto assignment :)
 """
 import utils
-
+import string as st
+from collections import deque
+from itertools import cycle
 
 #################
 # CAESAR CIPHER #
@@ -22,9 +24,21 @@ def encrypt_caesar(plaintext):
 
     :returns: The encrypted ciphertext.
     """
-    # Your implementation here.
-    raise NotImplementedError('encrypt_caesar is not yet implemented!')
 
+    ciphertext = ''
+    original_alphabet = st.ascii_uppercase
+
+    q = deque(original_alphabet)
+    q.rotate(-3)
+    rotated_alphabet = list(q)
+
+    for i in plaintext:
+        if i in original_alphabet:
+            ciphertext += rotated_alphabet[original_alphabet.index(i)]
+        else:
+            ciphertext += i
+
+    return ciphertext
 
 def decrypt_caesar(ciphertext):
     """Decrypt a ciphertext using a Caesar cipher.
@@ -36,9 +50,21 @@ def decrypt_caesar(ciphertext):
 
     :returns: The decrypted plaintext.
     """
-    # Your implementation here.
-    raise NotImplementedError('decrypt_caesar is not yet implemented!')
 
+    plaintext = ''
+    original_alphabet = st.ascii_uppercase
+    
+    q = deque(original_alphabet)
+    q.rotate(3)
+    rotated_alphabet = list(q)
+
+    for i in ciphertext:
+        if i in original_alphabet:
+            plaintext += rotated_alphabet[original_alphabet.index(i)]
+        else:
+            plaintext += i
+
+    return plaintext
 
 ###################
 # VIGENERE CIPHER #
@@ -56,9 +82,17 @@ def encrypt_vigenere(plaintext, keyword):
 
     :returns: The encrypted ciphertext.
     """
-    # Your implementation here.
-    raise NotImplementedError('encrypt_vigenere is not yet implemented!')
 
+    ciphertext = ''
+    keyword_looped = cycle([ord(i) for i in keyword])
+
+    for i in plaintext:
+        shift_value = (ord(i) + next(keyword_looped)) % 26
+        ciphertext += chr(shift_value + 65)
+
+    return ciphertext
+
+# print(encrypt_vigenere("AREALLYLONGWORD", "BCD"))
 
 def decrypt_vigenere(ciphertext, keyword):
     """Decrypt ciphertext using a Vigenere cipher with a keyword.
@@ -72,9 +106,17 @@ def decrypt_vigenere(ciphertext, keyword):
 
     :returns: The decrypted plaintext.
     """
-    # Your implementation here.
-    raise NotImplementedError('decrypt_vigenere is not yet implemented!')
 
+    plaintext = ''
+    keyword_looped = cycle([ord(i) for i in keyword])
+
+    for i in ciphertext:
+        shift_value = (ord(i) - next(keyword_looped)) % 26
+        plaintext += chr(shift_value + 65)
+
+    return plaintext
+
+# print(decrypt_vigenere(encrypt_vigenere("AREALLYLONGWORD", "BCD"), "BCD"))
 
 ########################################
 # MERKLE-HELLMAN KNAPSACK CRYPTOSYSTEM #
