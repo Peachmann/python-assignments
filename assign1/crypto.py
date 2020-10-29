@@ -9,6 +9,7 @@ import utils
 import string as st
 from collections import deque
 from itertools import cycle
+import error_handling as er
 
 #################
 # CAESAR CIPHER #
@@ -24,6 +25,9 @@ def encrypt_caesar(plaintext):
 
     :returns: The encrypted ciphertext.
     """
+
+    if not er.verify_input(plaintext):
+        return "Incorrect input"
 
     ciphertext = ''
     original_alphabet = st.ascii_uppercase
@@ -50,6 +54,9 @@ def decrypt_caesar(ciphertext):
 
     :returns: The decrypted plaintext.
     """
+    
+    if not er.verify_input(ciphertext):
+        return "Incorrect input"
 
     plaintext = ''
     original_alphabet = st.ascii_uppercase
@@ -83,6 +90,9 @@ def encrypt_vigenere(plaintext, keyword):
     :returns: The encrypted ciphertext.
     """
 
+    if not er.verify_input(plaintext):
+        return "Incorrect input"
+
     ciphertext = ''
     keyword_looped = cycle([ord(i) for i in keyword])
 
@@ -106,6 +116,9 @@ def decrypt_vigenere(ciphertext, keyword):
 
     :returns: The decrypted plaintext.
     """
+
+    if not er.verify_input(ciphertext):
+        return "Incorrect input"
 
     plaintext = ''
     keyword_looped = cycle([ord(i) for i in keyword])

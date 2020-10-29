@@ -1,4 +1,5 @@
 import math
+import error_handling as er
 #################
 # SCYTALE CIPHER #
 #################
@@ -14,6 +15,9 @@ def encrypt_scytale(plaintext, circumference):
     :returns: The encrypted ciphertext.
     """
 
+    if not er.verify_input(plaintext):
+        return "Incorrect input"
+
     ciphertext = ''
     text_length = len(plaintext)
     starting_point = 0
@@ -27,6 +31,7 @@ def encrypt_scytale(plaintext, circumference):
     text_length = len(plaintext)
 
     while starting_point < circumference:
+        # Get i-th char, make it a string list and join them
         ciphertext += ''.join(map(str, list((plaintext[i] for i in range(starting_point, text_length, circumference)))))
         starting_point += 1
 
@@ -58,4 +63,4 @@ def decrypt_scytale(ciphertext, circumference):
 
     return plaintext
 
-print(decrypt_scytale(encrypt_scytale("HELOSZIA", 3), 3))
+print(decrypt_scytale(encrypt_scytale("HELOSZIAA", 3), 3))

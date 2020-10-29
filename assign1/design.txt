@@ -1,13 +1,21 @@
-Name: <YOUR NAME>
-SUNet: <SUNet ID>
-
-In 1-3 sentences per section, comment on your approach to each of the parts of the assignment. What was your high-level strategy? How did you translate that into code? Did you make use of any Pythonic practices? We want you to reflect on your coding style, and how you are maximally leveraging Python's utilities.
+Name: Sólyom László
+ID: slim1870
 
 # Caesar Cipher
-
+I created a 3-rotated alphabet with an iterator and matched the letters.
+For deciphering, same but reversed.
 
 # Vigenere Cipher
+I looped the keyword with cycle iterator and calculated values with ord and char, respectively.
 
+# Scytale
+Get i-th char, make it a string list and join them.
+Reverse this method for deciphering.
 
-# Merkle-Hellman Knapsack Cryptosystem
+# Railfence
+Store text in a matrix as shown. Concatenate every line to get cipher.
+Create a matrix with the reversed method, transpose it to get the plaintext.
+
+# Byte-Caesar
+Same as normal Caesar, but with mod 256 (text is read as bytearray).
 
