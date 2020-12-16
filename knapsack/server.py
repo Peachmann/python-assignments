@@ -22,7 +22,6 @@ class ThreadedServer(object):
         self.sock.listen(5)
         while (self.running == True):
             client, address = self.sock.accept()
-            client.settimeout(60)
             threading.Thread(target = self.listenToClient,args = (client,address)).start()
 
     def listenToClient(self, client, address):
@@ -38,7 +37,6 @@ class ThreadedServer(object):
                 if data:
                     parsed_data = data.decode().split("#")
                     request_type = parsed_data[0]
-                    print(request_type)
                     
                     if (request_type == "echo"):
                         client.send(data)
