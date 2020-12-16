@@ -1,8 +1,11 @@
 import socket
 import sys
 import re
+import random
 import threading
+import traceback
 from knapsack import Merkle_Hellman
+from solitaire import Solitaire
 from clientMenu import get_choice
 from clientMenu import get_yes_or_no
 from clientMenu import get_input
@@ -24,8 +27,9 @@ class Client:
         self.chat_partner_username = ""
         self.running = True
         self.recieve_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.mh = Merkle_Hellman()
+        self.sol = Solitaire()
+        self.cards = {}
 
     def tuple_to_string(self, tpl):
         return ",".join(list(map(lambda x: str(x), tpl)))
@@ -42,39 +46,48 @@ class Client:
     def listen_to_peer(self, peer, address):
         print("[INFO] Client connected from %s:%s."%(address[0], address[1]))
         size = 1024
+        peer_username = ''
+        peer_public_key = ''
 
         while True:
             try:
                 data = peer.recv(size)
-                if data:
-                    parsed_data = data.decode().split("#")
-                    request_type = parsed_data[0]
+                if data and peer_username not in self.cards:
+                    decrypted_message = self.mh.decrypt_mh(self.string_to_list(data.decode()), self.client_private_key).split("#")
+                    request_type = decrypted_message[0]
                     
                     if (request_type == "hello"):
-                        decrypted_message = self.mh.decrypt_mh(self.string_to_list(parsed_data[1]), self.client_private_key).split("#")
-                        print("[INFO] User '%s' from port '%s' sent a 'hello' request. Grabbing public key and sending ACK response."%(decrypted_message[0], decrypted_message[1]))
+                        peer_username = decrypted_message[1]
+                        print("[INFO] User '%s' from port '%s' sent a 'hello' request. Grabbing public key and sending ACK response."%(peer_username, decrypted_message[2]))
                         
-                        key_request = "getkey#" + decrypted_message[0]
+                        key_request = "getkey#" + decrypted_message[1]
                         self.client_socket.send(key_request.encode())
                         
                         data_from_server = self.client_socket.recv(1024).decode().split("#")
-                        ack_port = int(data_from_server[1])
-                        ack_public_key = self.string_to_list(data_from_server[2])
-                        ack_response = "ack#" + self.list_to_string(self.mh.encrypt_mh("Hello recieved. You can send messages.", ack_public_key))
-                        
+                        peer_public_key = self.string_to_list(data_from_server[2])
+                        ack_response = self.list_to_string(self.mh.encrypt_mh("ack#Hello recieved. You can send messages.", peer_public_key))
                         peer.send(ack_response.encode())
 
-                    if (request_type == "ack"):
-                        decrypted_message = self.mh.decrypt_mh(self.string_to_list(parsed_data[1]), self.client_private_key)
-                        print("[INFO] I recieved ACK from '%s' on port '%s'"%(self.chat_partner_username, self.chat_partner_port))
+                    if (request_type == "firstkey"):
+                        print("[INFO] User '%s' sent me his part of the common key: %s"%(peer_username, decrypted_message[2]))
+                        key_2 = self.generate_random_secret()
+                        self.cards[peer_username] = self.sol.generate_cards(self.generate_common_secret(decrypted_message[2], key_2))
+                        print("[INFO] Cards generated: %s"%(self.cards[peer_username]))
 
-                    if (request_type == "msg"):
-                        print("Message from '%s': %s"%(parsed_data[1], parsed_data[2]))
-
+                        key_response = "secondkey#" + key_2
+                        data = self.list_to_string(self.mh.encrypt_mh(key_response, peer_public_key))
+                        peer.send(data.encode())
+                elif data:
+                    decrypted_message = self.sol.decrypt(self.cards[peer_username], data.decode())
+                    if (decrypted_message == "!bye"):
+                        print("[INFO] Peer '%s' said goodbye."%(peer_username))
+                        peer.send(self.sol.encrypt(self.cards[peer_username], "!bye").encode())
+                    print("[%s] -> me: %s"%(peer_username, decrypted_message))
                 else:
-                    raise NameError("[INFO] Client disconnected at %s:%s."%(address[0], address[1]))
+                    raise NameError("[INFO] Peer disconnected at %s:%s."%(address[0], address[1]))
             except:
-                print("[INFO] Client disconnected at %s:%s."%(address[0], address[1]))
+                traceback.print_exc()
+                print("[INFO] Peer '%s' disconnected at %s:%s."%(peer_username, address[0], address[1]))
                 peer.close()
                 return False
 
@@ -158,44 +171,76 @@ class Client:
             self.chat_partner_key = self.string_to_tuple(data_from_server[2])
             print("Your partner %s can be found on port %s with key %s"%(self.chat_partner_username, self.chat_partner_port, self.chat_partner_key))
 
+    def generate_random_secret(self):
+        return ''.join(list(map(lambda x: str(random.randint(10, 99)), range(10))))
+
+    def generate_common_secret(self, key_1, key_2):
+        return ''.join(map(''.join, zip(key_1, key_2)))
+
     def do_send_message(self):
         if (self.chat_partner_key == "" or self.chat_partner_port == ""):
-            print("You need to get a chat partner's details first!")
+            print("[ERROR] You need to get a chat partner's details first!")
             return
-        
-        self.send_socket.close()
-        self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.send_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.send_socket.connect((SERVER_IP, self.chat_partner_port))
+
+        send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        send_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        send_socket.connect((SERVER_IP, self.chat_partner_port))
 
         print ("\n[INFO] Starting chat process. Send '!end' as a message to return to the main menu.\n[INFO] Sending communication request.\n")
-        request_type = "hello#"
-        request_body = self.client_username + "#" + str(self.client_port)
-        data = request_type + self.list_to_string(Merkle_Hellman().encrypt_mh(request_body, self.chat_partner_key))
-        self.send_socket.send(data.encode())
+        request_body = "hello#" + self.client_username + "#" + str(self.client_port)
+        data = self.list_to_string(self.mh.encrypt_mh(request_body, self.chat_partner_key))
+        send_socket.send(data.encode())
 
-        ack_response = self.send_socket.recv(1024).decode().split("#")
-        print(ack_response)
-        if (ack_response[0] != "ack"):
+        ack_response = send_socket.recv(1024).decode()
+        decrpyed_response = self.mh.decrypt_mh(self.string_to_list(ack_response), self.client_private_key).split('#')
+        if (decrpyed_response[0] != "ack"):
             return
-        
-        print(self.mh.decrypt_mh(self.string_to_list(ack_response[1]), self.client_private_key))
 
-        message_text = "Enter message to send to '{}'".format(self.chat_partner_username)
+        print("[ACK] ACK recieved: %s"%(decrpyed_response[1]))
+        cards_init = ''
+        
+        if (self.chat_partner_username not in self.cards):
+            key_1 = self.generate_random_secret()
+            print("My key is: %s"%(key_1))
+            request_body = "firstkey#" + self.client_username + "#" + key_1
+            request = self.list_to_string(self.mh.encrypt_mh(request_body, self.chat_partner_key))
+            send_socket.send(request.encode())
+
+            key_response = send_socket.recv(1024).decode()
+            decrpyed_response = self.mh.decrypt_mh(self.string_to_list(key_response), self.client_private_key).split('#')
+        
+            if (decrpyed_response[0] == "secondkey"):
+                cards_init = self.sol.generate_cards(self.generate_common_secret(key_1, decrpyed_response[1]))
+                self.cards[self.chat_partner_username] = cards_init
+        else:
+            cards_init = self.cards[self.chat_partner_username]
+
+        print("[INFO] Cards generated: %s"%(cards_init))
+
+        message_text = "me -> [{}]: ".format(self.chat_partner_username)
         message = get_input(message_text)
-        request_type = "msg#"
-        while (message != "!end"):
-            # Solitaire here
-            data = request_type + self.client_username + "#" + message
-            self.send_socket.send(data.encode())
+        while (message != "!bye"):
+            if not re.match("^[A-Za-z0-9 ,:!?]*$", message):
+                print ("[ERROR] Only letters, digits, and punctuation is allowed!")
+                message = get_input(message_text)
+                continue
+
+            data = self.sol.encrypt(cards_init, message)
+            send_socket.send(data.encode())
             message = get_input(message_text)
 
+        data = self.sol.encrypt(cards_init, "!bye")
+        send_socket.send(data.encode())
+        bye_response = self.sol.decrypt(cards_init, send_socket.recv(1024).decode())
+        if bye_response == "!bye":
+            print("[INFO] User '%s' responded to my goodbye."%(self.chat_partner_username))
+
+        send_socket.close()
 
     def do_exit(self):
         print("Thank you for using CryptoChat!")
         self.running = False
         self.client_socket.close()
-        self.send_socket.close()
         self.recieve_socket.close()
         sys.exit()
 
