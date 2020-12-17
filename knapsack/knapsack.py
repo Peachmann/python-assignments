@@ -3,6 +3,12 @@ import utils
 import numpy
 
 class Merkle_Hellman:
+    """
+    Merkle-Hellman Knapsack implementation following the specification at
+    https://github.com/stanfordpython/python-assignments/tree/master/assign1
+
+    All function names are self-explanatory, steps followed as written.
+    """
     def __init__(self, n=8):
         self.n = n
         self.private_key = ''
@@ -27,6 +33,7 @@ class Merkle_Hellman:
 
         return (sequence, q, r)
 
+    # The three parts of the private key are obtained by index
     def generate_public_key(self, private_key):
         return tuple(map(lambda x: private_key[2] * x % private_key[1], private_key[0]))
 
@@ -62,9 +69,13 @@ class Merkle_Hellman:
 
         return ''.join(decrypted)
 
+# Dummy code for testing the functions locally.
+
 # mh = Merkle_Hellman()
 # private_key1 = mh.generate_private_key()
+# print(private_key1)
 # public_key1 = mh.generate_public_key(private_key1)
+# print(public_key1)
 
 # private_key2 = mh.generate_private_key()
 # public_key2 = mh.generate_public_key(private_key2)
