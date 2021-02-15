@@ -1,0 +1,111 @@
+All commands ran in Git Bash under Windows 10 x64.
+Winpty command ensures correct encoding of some bash-like commands.
+
+----------------------------------------------------------------------------------
+1. Create fake self-signed cert of BNR
+----------------------------------------------------------------------------------
+
+1. Generate RSA key
+winpty openssl genrsa -aes128 -out key.pem
+
+2. Create self-signed certificate (openssl)
+winpty openssl req -x509 -key key.pem -keyout key_new.pem -out cert.pem -days 365 -subj "//X=X/C=RO/ST=Bucuresti/L=Bucuresti/O=BNR/OU=Org/CN=www.bnr.ro"
+
+3. Create keystore for server 1 with fake cert (keytool)
+keytool -genkeypair -keyalg RSA -alias selfsignedcert -keystore keystore1.jks -storepass password -validity 360 -keysize 2048
+
+(?) 4. Conversion to pkcs12
+keytool -importkeystore -srckeystore keystore1.jks -destkeystore keystore1.jks -deststoretype pkcs12
+
+----------------------------------------------------------------------------------
+2. Create Root, Client and Server CA
+----------------------------------------------------------------------------------
+
+The following were set in the config files:
+countryName_default             = RO
+stateOrProvinceName_default     = Kolozs
+localityName_default            = Kolozsvar
+0.organizationName_default      = BBTE
+organizationalUnitName_default  = Kriptografia
+default_enddate   		= 20210228120000Z
+
+1. Create RootCA key with Elliptic Curve
+winpty openssl ecparam -name prime256v1 -genkey -noout -out rootca.key
+
+2. Create RootCA
+winpty openssl req -sha256 -new -x509 -key rootca.key -out rootca.crt.pem
+
+3. Create ClientCA key with Elliptic Curve
+winpty openssl ecparam -name prime256v1 -genkey -noout -out clientca.key
+
+4. Create ClientCA CSR
+winpty openssl req -config intermediate/openssl.cnf -new -sha256 -key intermediate/private/clientca.key -out intermediate/csr/clientca.csr
+
+5. Sign ClientCA CSR with RootCA (expiration date set in the .cnf file)
+winpty openssl ca -config openssl.cnf -extensions v3_intermediate_ca -notext -md sha256 -in intermediate/csr/clientca.csr -out intermediate/certs/clientca.crt.pem
+
+6. Verify (optional)
+winpty openssl x509 -noout -text -in intermediate/certs/clientca.crt.pem
+
+7. Create ServerCA key with Elliptic Curve
+winpty openssl ecparam -name prime256v1 -genkey -noout -out serverca.key
+
+8. Create ServerCA CSR
+winpty openssl req -config intermediate/openssl.cnf -new -sha256 -key intermediate/private/serverca.key -out intermediate/csr/serverca.csr
+
+9. Sign ServerCA CSR with RootCA (expiration date set in the .cnf file)
+winpty openssl ca -config openssl.cnf -extensions v3_intermediate_ca -notext -md sha256 -in intermediate/csr/serverca.csr -out intermediate/certs/serverca.crt.pem
+
+10. Create End-User Client key with Elliptic Curve
+winpty openssl ecparam -name prime256v1 -genkey -noout -out endclient.key
+
+-> Switch directory to intermediate
+
+11. Create End-User Client CSR
+winpty openssl req -config clientCA.cnf -new -sha256 -key private/endclient.key -out csr/endclient.csr
+
+12. Sign End-User Client CSR with ClientCA
+winpty openssl ca -config clientCA.cnf -extensions v3_intermediate_ca -notext -md sha256 -in csr/endclient.csr -out certs/endclient.crt.pem
+
+13. Verify (optional)
+winpty openssl x509 -noout -text -in certs/endclient.crt.pem
+
+14. Create End-User Server key with RSA (pw: root)
+winpty openssl genrsa -aes256 -out endserver.key 2048
+
+15. Create End-User Server CSR
+winpty openssl req -config serverCA.cnf -new -sha256 -key private/endserver.key -out csr/endserver.csr
+
+16. Sign End-User Server CSR with ServerCA
+winpty openssl ca -config serverCA.cnf -extensions v3_intermediate_ca -notext -md sha256 -in csr/endserver.csr -out certs/endserver.crt.pem
+
+17. Verify (optional)
+winpty openssl x509 -noout -text -in certs/endserver.crt.pem
+
+----------------------------------------------------------------------------------
+3. Create 2 different keystores, for server and client, add created certificates
+----------------------------------------------------------------------------------
+
+1. Create Client Keystore
+winpty openssl pkcs12 -export -in endclient.crt.pem -inkey endclient.key -out client.pfx -name "ClientKeystore"
+
+2. Create Client Truststore
+winpty keytool -genkey -dname "cn=slim1870-client" -alias clienttruststorekey -keyalg RSA -keystore ./client-truststore.jks -keypass keypassword -storepass storepassword
+
+3. Import Server Certs in Client Truststore
+winpty keytool -import -keystore ./client-truststore.jks -file endserver.crt.pem -alias endserver
+
+4. Create Server Truststore
+winpty keytool -genkey -dname "cn=slim1870-server" -alias servertruststore -keyalg RSA -keystore ./server-truststore.jks -keypass storepassword -storepass storepassword
+
+5. Create Server Cert to Serve
+winpty openssl pkcs12 -export -out server-store.pfx -inkey endserver.key -in endserver.crt.pem
+
+6. Import Client Certs in Server Truststore
+winpty keytool -import -keystore ./server-truststore.jks -file endclient.crt.pem -alias endclient
+
+
+
+
+
+

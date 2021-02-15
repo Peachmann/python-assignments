@@ -1,0 +1,2 @@
+V	210228120000Z		1000	unknown	/C=RO/ST=Kolozs/O=BBTE/OU=Kriptografia/CN=slim1870-ClientCA
+V	210228120000Z		1001	unknown	/C=RO/ST=Kolozs/O=BBTE/OU=Kriptografia/CN=slim1870-ServerCA

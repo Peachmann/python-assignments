@@ -1,0 +1,13 @@
+HTTP/1.1 302 Found
+Cache-Control: private
+Content-Length: 148
+Content-Type: text/html; charset=utf-8
+Location: http://194.102.208.81/Home.aspx
+Date: Wed, 27 Jan 2021 10:30:18 GMT
+Connection: close
+Strict-Transport-Security: max-age=16070400; includeSubDomains
+Set-Cookie: TS011e9a3f=0187e48c1b7aefb527cdc3d233974d2867c0aaf5051419b670c62062b829447bfa33db13773d8f257f6358c655bdc191d2c88ca6cb; Path=/
+
+<html><head><title>Object moved</title></head><body>
+<h2>Object moved to <a href="http://194.102.208.81/Home.aspx">here</a>.</h2>
+</body></html>
